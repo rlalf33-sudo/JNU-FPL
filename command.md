@@ -29,7 +29,8 @@ https://rlalf33-sudo.github.io/JNU-FPL/?utm_source=chatgpt.com
 https://app.pagescms.org/
 
 ## 사진 업로드 후에 수행
+git pull origin main
+npm run build
 git add .
-git commit -m "Refine News detail title"
-git pull --rebase origin main
+git commit -m "Update news"
 git push origin main
