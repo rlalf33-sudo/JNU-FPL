@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="ko">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Learning Rate · Gradient Descent Demo</title>
+<style>
+:root{--navy:#0b2f73;--blue:#0877ed;--sky:#eaf6ff;--line:#9bd0fa;--text:#102a56}
+*{box-sizing:border-box}
+body{margin:0;background:white;color:var(--text);font-family:Arial,"Noto Sans KR",sans-serif}
+.wrap{max-width:1200px;margin:0 auto;padding:28px}
+h1{margin:0 0 6px;font-size:32px;color:var(--navy)}
+.sub{margin:0 0 22px;color:#52708f}
+.controls{display:flex;gap:18px;align-items:center;background:var(--sky);border:1px solid var(--line);border-radius:14px;padding:16px 20px}
+.controls label{font-weight:700;min-width:170px}.controls input{flex:1}.value{font-size:26px;font-weight:800;color:var(--blue);min-width:80px;text-align:right}
+.grid{display:grid;grid-template-columns:minmax(0,1fr) 270px;gap:18px;margin-top:18px}
+.panel{border:1px solid var(--line);border-radius:14px;padding:16px;background:#fff}
+svg{width:100%;height:auto;display:block}
+.info h2{margin:0 0 8px;color:var(--blue);font-size:22px}
+.info p{line-height:1.55;margin:8px 0}
+.eq{font-family:Georgia,serif;font-size:22px;padding:14px;background:var(--sky);border-radius:10px;text-align:center}
+.note{font-size:14px;color:#58708d}
+button{border:1px solid var(--blue);background:white;color:var(--blue);border-radius:9px;padding:10px 14px;font-weight:700;cursor:pointer}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.controls{flex-wrap:wrap}.controls input{width:100%;flex-basis:100%}}
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>Learning Rate에 따른 Gradient Descent</h1>
+<p class="sub">Learning Rate(η)를 움직여 Weight update의 크기와 수렴 양상을 확인해보세요.</p>
+
+<div class="controls">
+<label for="lr">Learning Rate (η)</label>
+<input id="lr" type="range" min="0.01" max="1.10" step="0.01" value="0.15">
+<div class="value" id="lrval">0.15</div>
+<button id="reset">Reset</button>
+</div>
+
+<div class="grid">
+<div class="panel">
+<svg id="chart" viewBox="0 0 760 500" aria-label="Gradient descent interactive graph">
+<defs>
+<marker id="arrow" markerWidth="9" markerHeight="9" refX="7" refY="3.5" orient="auto">
+<path d="M0,0 L0,7 L8,3.5 z" fill="#0877ed"/>
+</marker>
+</defs>
+<line x1="75" y1="425" x2="715" y2="425" stroke="#0b2f73" stroke-width="3"/>
+<line x1="75" y1="425" x2="75" y2="45" stroke="#0b2f73" stroke-width="3"/>
+<text x="635" y="465" font-size="22" font-weight="700" fill="#0b2f73">Weight (w)</text>
+<text x="20" y="65" font-size="22" font-weight="700" fill="#0b2f73">Loss</text>
+<path id="curve" fill="none" stroke="#0b2f73" stroke-width="4"/>
+<circle id="minDot" r="8" fill="#cfeaff" stroke="#0877ed" stroke-width="3"/>
+<text id="minText" font-size="16" font-weight="700" fill="#0877ed">MINIMUM</text>
+<g id="traj"></g>
+</svg>
+</div>
+
+<div class="panel info">
+<h2 id="state">Stable convergence</h2>
+<p id="desc">적절한 크기의 Step으로 낮은 Loss 영역에 접근합니다.</p>
+<div class="eq">w<sub>new</sub> = w<sub>old</sub> − η · ∂L/∂w</div>
+<p><b>Gradient</b><br>현재 위치에서 Loss가 변하는 방향과 크기에 대한 정보</p>
+<p><b>Learning Rate</b><br>Gradient에 곱해져 실제 Weight update의 크기를 조절</p>
+<p class="note">Loss curve와 시작 Weight는 고정되어 있습니다. Learning Rate만 변경됩니다.</p>
+</div>
+</div>
+</div>
+
+<script>
+const lr=document.getElementById('lr'), val=document.getElementById('lrval');
+const traj=document.getElementById('traj'), curve=document.getElementById('curve');
+const state=document.getElementById('state'), desc=document.getElementById('desc');
+const reset=document.getElementById('reset');
+const NS="http://www.w3.org/2000/svg";
+const xmin=-3.2,xmax=3.2,ymax=10.5;
+const px=x=>75+(x-xmin)/(xmax-xmin)*640;
+const py=y=>425-Math.min(y,ymax)/ymax*355;
+const L=x=>x*x, G=x=>2*x;
+let d="";
+for(let i=0;i<=240;i++){let x=xmin+(xmax-xmin)*i/240;d+=(i?"L":"M")+px(x).toFixed(2)+","+py(L(x)).toFixed(2)+" "}
+curve.setAttribute("d",d);
+document.getElementById("minDot").setAttribute("cx",px(0));
+document.getElementById("minDot").setAttribute("cy",py(0));
+document.getElementById("minText").setAttribute("x",px(0)-42);
+document.getElementById("minText").setAttribute("y",py(0)-18);
+
+function node(name,attrs,text){
+ const e=document.createElementNS(NS,name);
+ Object.entries(attrs).forEach(([k,v])=>e.setAttribute(k,v));
+ if(text)e.textContent=text;
+ return e;
+}
+function render(){
+ const eta=+lr.value; val.textContent=eta.toFixed(2); traj.replaceChildren();
+ let w=-2.75, pts=[w];
+ for(let i=0;i<12;i++){
+   let next=w-eta*G(w);
+   if(Math.abs(next)>3.15){pts.push(Math.max(-3.15,Math.min(3.15,next)));break;}
+   pts.push(next); w=next;
+ }
+ for(let i=0;i<pts.length-1;i++){
+   const a=pts[i],b=pts[i+1];
+   traj.appendChild(node("line",{x1:px(a),y1:py(L(a)),x2:px(b),y2:py(L(b)),stroke:"#0877ed","stroke-width":"3","marker-end":"url(#arrow)"}));
+ }
+ pts.forEach((w,i)=>traj.appendChild(node("circle",{cx:px(w),cy:py(L(w)),r:i===0?9:6,fill:i===0?"#0b2f73":"#cfeaff",stroke:"#0877ed","stroke-width":"3"})));
+ traj.appendChild(node("text",{x:px(pts[0])+12,y:py(L(pts[0]))-12,fill:"#0b2f73","font-size":"16","font-weight":"700"},"START"));
+ if(eta<0.10){state.textContent="Small steps";desc.textContent="한 번의 이동이 작아 Minimum을 향해 천천히 접근합니다."}
+ else if(eta<0.55){state.textContent="Stable convergence";desc.textContent="적절한 크기의 Step으로 낮은 Loss 영역에 안정적으로 접근합니다."}
+ else if(eta<1.00){state.textContent="Overshoot / oscillation";desc.textContent="Minimum을 반복해서 지나치며 좌우로 진동할 수 있습니다."}
+ else{state.textContent="Unstable learning";desc.textContent="Update가 너무 커져 Minimum에 안정적으로 수렴하지 못할 수 있습니다."}
+}
+lr.addEventListener("input",render);
+reset.addEventListener("click",()=>{lr.value="0.15";render()});
+render();
+</script>
+</body>
+</html>
